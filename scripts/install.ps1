@@ -11,13 +11,17 @@ $ErrorActionPreference = 'Stop'
 function Get-ExistingItem {
     param([Parameter(Mandatory = $true)][string]$LiteralPath)
 
+    $directItem = Get-Item -LiteralPath $LiteralPath -Force -ErrorAction SilentlyContinue
+    if ($null -ne $directItem) {
+        return $directItem
+    }
     $parent = Split-Path -Parent $LiteralPath
     $leaf = Split-Path -Leaf $LiteralPath
     if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
         return $null
     }
     return Get-ChildItem -LiteralPath $parent -Force |
-        Where-Object { $_.Name -ceq $leaf } |
+        Where-Object { $_.Name -eq $leaf } |
         Select-Object -First 1
 }
 

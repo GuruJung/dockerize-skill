@@ -34,6 +34,18 @@ uninstall_script="$repo_root/scripts/uninstall.sh"
 source_dir="$repo_root/skills/dockerize"
 test_root="$(mktemp -d "${TMPDIR:-/tmp}/dockerize-skill-tests.XXXXXX")"
 
+# Windows target discovery must use case-insensitive provider semantics. Direct
+# lookup handles normal paths; parent enumeration also detects broken links.
+for powershell_script in "$repo_root/scripts/install.ps1" "$repo_root/scripts/uninstall.ps1"; do
+  grep -Fq 'Get-Item -LiteralPath $LiteralPath -Force -ErrorAction SilentlyContinue' "$powershell_script" ||
+    fail "PowerShell direct target lookup is missing: $powershell_script"
+  grep -Fq 'Where-Object { $_.Name -eq $leaf }' "$powershell_script" ||
+    fail "PowerShell case-insensitive fallback lookup is missing: $powershell_script"
+  if grep -Fq 'Where-Object { $_.Name -ceq $leaf }' "$powershell_script"; then
+    fail "PowerShell target lookup is incorrectly case-sensitive: $powershell_script"
+  fi
+done
+
 cleanup() {
   case "$test_root" in
     "${TMPDIR:-/tmp}"/dockerize-skill-tests.*) rm -rf -- "$test_root" ;;
