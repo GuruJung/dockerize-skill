@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dockerize"
+  short_description: "Compose setup for non-containerized projects"
+  default_prompt: "Use $dockerize to add a Docker Compose setup for this project while avoiding host pollution."

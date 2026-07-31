@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+
+# Replace this base image with the project-appropriate runtime.
+FROM python:3.12-slim AS runtime
+
+WORKDIR /work
+
+# Install dependency manifests before source for better cache reuse.
+# Python example:
+COPY requirements*.txt ./
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+
+# Node example:
+# COPY package*.json ./
+# RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# Copy source after dependencies. Keep .dockerignore strict.
+COPY . .
+
+# Do not force USER here. Use the base image's non-root user only when documented/supported.
+
+CMD ["python", "-m", "app"]
