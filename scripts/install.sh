@@ -86,6 +86,7 @@ backup_root="$agents_root/skill-backups/dockerize"
 
 [[ -d "$source_dir" ]] || die "source directory not found: $source_dir"
 [[ -f "$source_dir/SKILL.md" ]] || die "source SKILL.md not found: $source_dir/SKILL.md"
+bash "$script_dir/check-sync.sh"
 
 for managed_root in "$agents_root" "$skills_root" "$backup_root"; do
   if [[ -L "$managed_root" ]]; then

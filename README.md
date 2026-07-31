@@ -1,46 +1,75 @@
-# Dockerize skill development
+# Dockerize 스킬 개발
 
-This repository is the canonical source for the personal `dockerize` skill. The
-skill itself lives in `skills/dockerize`; development scripts and documentation
-stay outside that directory so they are not copied into the installed skill.
+이 저장소는 개인용 `dockerize` 스킬의 정본을 관리한다. 스킬 내용은 한국어로 먼저 작성하고, Codex가 실제로 읽고 전역 설치하는 파일은 의미가 동등한 영어본으로 유지한다.
 
-Codex loads personal skills from `$HOME/.agents/skills`. See the official
-[Build skills documentation](https://learn.chatgpt.com/docs/build-skills).
+- 한국어 콘텐츠 정본: `locales/ko/dockerize/SKILL.md`
+- 영어 배포본: `skills/dockerize/SKILL.md`
+- 동기화 상태: `sync/dockerize.sha256`
+- 저장소 작업 규칙: `AGENTS.md`
 
-## Requirements
+Codex의 사용자 스킬 설치 위치는 `$HOME/.agents/skills`이다. 자세한 내용은 공식 [Build skills 문서](https://learn.chatgpt.com/docs/build-skills)를 참고한다.
 
-- Bash 3.2 or newer on Linux or macOS, or Windows PowerShell 5.1 or newer.
-- No administrator privileges or third-party packages are required.
-- The PowerShell scripts are maintained for parity but are statically reviewed
-  rather than runtime-tested in the current Linux development environment.
+## 요구사항
 
-## Install and update
+- Linux/macOS에서는 Bash 3.2 이상과 `sha256sum` 또는 `shasum`이 필요하다.
+- Windows에서는 Windows PowerShell 5.1 이상이 필요하다.
+- 관리자 권한이나 서드파티 패키지는 필요하지 않는다.
+- 현재 Linux 개발 환경에서는 PowerShell 스크립트를 실행하지 않고 정적으로 검토한다.
 
-Edit the canonical files under `skills/dockerize`, validate them, and then copy
-the current version into the global user-skill directory.
+## 스킬 수정 흐름
+
+이 저장소에서 평소처럼 한국어로 변경을 요청하면 `AGENTS.md`에 따라 다음 순서로 작업한다.
+
+1. 한국어 정본을 먼저 수정한다.
+2. 규칙과 조건을 보존해 영어 `SKILL.md`를 자연스러운 명령문으로 번역한다.
+3. 두 파일의 의미 동등성을 검토한다.
+4. 동기화 해시를 기록하고 검사한다.
+5. 양쪽 스킬을 검증하고 회귀 테스트를 실행한다.
+
+영어본이나 `$HOME/.agents/skills/dockerize`의 설치본을 직접 수정하지 않는다. References, assets 및 `agents/openai.yaml`은 영어 단일본으로 관리한다.
+
+## 동기화 기록과 검사
+
+번역의 의미 동등성을 검토한 뒤에만 다음 명령을 실행한다.
 
 ```bash
+./scripts/record-sync.sh
+./scripts/check-sync.sh
+```
+
+PowerShell에서는 다음과 같다.
+
+```powershell
+.\scripts\record-sync.ps1
+.\scripts\check-sync.ps1
+```
+
+Record 명령은 두 파일의 SHA-256을 `sync/dockerize.sha256`에 원자적으로 기록한다. 해시는 번역 품질을 판단하지 않으며, 마지막 의미 검토 후 어느 한쪽이 변경되었는지만 검출한다.
+
+동기화 manifest가 없거나 손상되었거나 실제 파일과 일치하지 않으면 검사와 전역 설치가 모두 실패한다.
+
+## 검증과 설치
+
+```bash
+python "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" locales/ko/dockerize
 python "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" skills/dockerize
+./scripts/check-sync.sh
 ./scripts/install.sh
 ```
 
-From PowerShell:
+PowerShell에서는 다음 명령으로 설치한다.
 
 ```powershell
 .\scripts\install.ps1
 ```
 
-Both installers default to `$HOME/.agents`. For isolated testing or a custom
-location, use `--agents-root <path>` in Bash or `-AgentsRoot <path>` in
-PowerShell.
+설치기는 동기화를 먼저 검사한 뒤 영어 `skills/dockerize` 폴더만 `$HOME/.agents/skills/dockerize`에 복사한다. 한국어 원본, 동기화 파일 및 개발 지침은 설치본에 포함되지 않는다.
 
-An identical installation is a no-op. When the installed copy differs, the
-installer stages and verifies the new copy, backs up the installed copy, and
-then promotes the new version. The five newest managed backups are retained in
-`$HOME/.agents/skill-backups/dockerize`. Files or links at the target location
-are refused instead of overwritten.
+두 설치기는 기본적으로 `$HOME/.agents`를 사용한다. 격리 테스트나 사용자 지정 위치에는 Bash의 `--agents-root <path>` 또는 PowerShell의 `-AgentsRoot <path>`를 사용한다.
 
-## Uninstall
+설치본이 영어 배포본과 같으면 아무 작업도 하지 않는다. 내용이 다르면 새 복사본을 staging하고 검증한 뒤 기존 설치본을 백업하고 교체한다. 최근 관리 백업 5개를 `$HOME/.agents/skill-backups/dockerize`에 유지하며, 대상 위치의 파일이나 링크는 덮어쓰지 않는다.
+
+## 제거
 
 ```bash
 ./scripts/uninstall.sh
@@ -50,42 +79,32 @@ are refused instead of overwritten.
 .\scripts\uninstall.ps1
 ```
 
-Uninstall moves the current installation into the backup directory. Running it
-when the skill is already absent succeeds without changing anything.
+제거 명령은 현재 설치본을 백업 폴더로 옮긴다. 이미 설치되어 있지 않으면 변경 없이 성공한다.
 
-## Restore a backup manually
+## 백업 수동 복원
 
-Choose a backup only after confirming that `$HOME/.agents/skills/dockerize` is
-absent. In Bash:
+먼저 `$HOME/.agents/skills/dockerize`가 없는지 확인한 뒤 백업 하나를 선택한다. Bash에서는 다음과 같이 복원한다.
 
 ```bash
 mkdir -p "$HOME/.agents/skills"
 cp -R "$HOME/.agents/skill-backups/dockerize/<backup-name>" "$HOME/.agents/skills/dockerize"
 ```
 
-In PowerShell:
+PowerShell에서는 다음과 같다.
 
 ```powershell
 New-Item -ItemType Directory -Path (Join-Path $HOME '.agents/skills') -Force
 Copy-Item -Recurse -LiteralPath (Join-Path $HOME '.agents/skill-backups/dockerize/<backup-name>') -Destination (Join-Path $HOME '.agents/skills/dockerize')
 ```
 
-Validate the restored directory. Codex normally detects skill changes
-automatically; restart Codex if the restored skill does not appear.
+복원한 폴더를 검증한다. Codex는 보통 스킬 변경을 자동 감지하지만 나타나지 않으면 Codex를 재시작한다.
 
-## Legacy location
+## 테스트
 
-The reusable installers intentionally do not inspect or modify
-`$HOME/.codex/skills`. A legacy `dockerize` copy must be compared, backed up,
-and removed as a separate one-time migration after the official installation
-has been verified. Other legacy skills must remain untouched.
-
-## Tests
-
-The Bash test suite uses only temporary directories and never touches the real
-home directory:
+Bash 테스트는 임시 디렉터리만 사용하며 실제 홈 디렉터리를 변경하지 않는다.
 
 ```bash
-bash -n scripts/install.sh scripts/uninstall.sh tests/test-install.sh
+bash -n scripts/*.sh tests/test-install.sh
+./scripts/check-sync.sh
 bash tests/test-install.sh
 ```

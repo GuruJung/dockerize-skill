@@ -31,6 +31,8 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 repo_root="$(CDPATH= cd -- "$script_dir/.." && pwd -P)"
 install_script="$repo_root/scripts/install.sh"
 uninstall_script="$repo_root/scripts/uninstall.sh"
+check_sync_script="$repo_root/scripts/check-sync.sh"
+record_sync_script="$repo_root/scripts/record-sync.sh"
 source_dir="$repo_root/skills/dockerize"
 test_root="$(mktemp -d "${TMPDIR:-/tmp}/dockerize-skill-tests.XXXXXX")"
 
@@ -46,6 +48,17 @@ for powershell_script in "$repo_root/scripts/install.ps1" "$repo_root/scripts/un
   fi
 done
 
+for powershell_script in "$repo_root/scripts/check-sync.ps1" "$repo_root/scripts/record-sync.ps1"; do
+  grep -Fq 'Get-FileHash -LiteralPath' "$powershell_script" ||
+    fail "PowerShell SHA-256 hashing is missing: $powershell_script"
+done
+grep -Fq "& (Join-Path \$PSScriptRoot 'check-sync.ps1')" "$repo_root/scripts/install.ps1" ||
+  fail 'PowerShell installer does not enforce the sync check'
+grep -Fq '[IO.File]::WriteAllText' "$repo_root/scripts/record-sync.ps1" ||
+  fail 'PowerShell record command does not write its temporary manifest explicitly'
+grep -Fq '[IO.File]::Replace' "$repo_root/scripts/record-sync.ps1" ||
+  fail 'PowerShell record command does not atomically replace an existing manifest'
+
 cleanup() {
   case "$test_root" in
     "${TMPDIR:-/tmp}"/dockerize-skill-tests.*) rm -rf -- "$test_root" ;;
@@ -53,6 +66,59 @@ cleanup() {
   esac
 }
 trap cleanup EXIT
+
+# Sync checking is deterministic and blocks installation before target changes.
+sync_repo="$test_root/sync repo"
+mkdir -p -- \
+  "$sync_repo/scripts" \
+  "$sync_repo/skills/dockerize" \
+  "$sync_repo/locales/ko/dockerize" \
+  "$sync_repo/sync"
+cp "$install_script" "$check_sync_script" "$record_sync_script" "$sync_repo/scripts/"
+cp "$repo_root/skills/dockerize/SKILL.md" "$sync_repo/skills/dockerize/SKILL.md"
+cp "$repo_root/locales/ko/dockerize/SKILL.md" "$sync_repo/locales/ko/dockerize/SKILL.md"
+cp "$repo_root/sync/dockerize.sha256" "$sync_repo/sync/dockerize.sha256"
+
+bash "$sync_repo/scripts/check-sync.sh" >/dev/null
+printf '\n<!-- synchronization test -->\n' >>"$sync_repo/locales/ko/dockerize/SKILL.md"
+if bash "$sync_repo/scripts/check-sync.sh" >/dev/null 2>&1; then
+  fail 'sync check accepted a changed Korean source'
+fi
+
+stale_install_root="$test_root/stale sync install"
+mkdir -p -- "$stale_install_root/skills/dockerize"
+printf 'must remain unchanged\n' >"$stale_install_root/skills/dockerize/sentinel"
+if bash "$sync_repo/scripts/install.sh" --agents-root "$stale_install_root" >/dev/null 2>&1; then
+  fail 'installer accepted stale translation hashes'
+fi
+[[ "$(sed -n '1p' "$stale_install_root/skills/dockerize/sentinel")" == 'must remain unchanged' ]] ||
+  fail 'stale sync check changed the existing installation'
+
+printf '\n<!-- synchronization test -->\n' >>"$sync_repo/skills/dockerize/SKILL.md"
+bash "$sync_repo/scripts/record-sync.sh" >/dev/null
+bash "$sync_repo/scripts/check-sync.sh" >/dev/null
+cp "$sync_repo/sync/dockerize.sha256" "$test_root/manifest-first"
+bash "$sync_repo/scripts/record-sync.sh" >/dev/null
+cmp -s "$test_root/manifest-first" "$sync_repo/sync/dockerize.sha256" ||
+  fail 'recording unchanged files produced a different manifest'
+
+cp "$sync_repo/skills/dockerize/SKILL.md" "$test_root/english-snapshot"
+cp "$sync_repo/sync/dockerize.sha256" "$test_root/manifest-snapshot"
+printf '\n<!-- English-only change -->\n' >>"$sync_repo/skills/dockerize/SKILL.md"
+if bash "$sync_repo/scripts/check-sync.sh" >/dev/null 2>&1; then
+  fail 'sync check accepted an English-only change'
+fi
+cp "$test_root/english-snapshot" "$sync_repo/skills/dockerize/SKILL.md"
+
+printf 'version=1\n' >>"$sync_repo/sync/dockerize.sha256"
+if bash "$sync_repo/scripts/check-sync.sh" >/dev/null 2>&1; then
+  fail 'sync check accepted a duplicate manifest key'
+fi
+cp "$test_root/manifest-snapshot" "$sync_repo/sync/dockerize.sha256"
+mv "$sync_repo/sync/dockerize.sha256" "$sync_repo/sync/dockerize.sha256.missing"
+if bash "$sync_repo/scripts/check-sync.sh" >/dev/null 2>&1; then
+  fail 'sync check accepted a missing manifest'
+fi
 
 agents_root="$test_root/agents root"
 target="$agents_root/skills/dockerize"

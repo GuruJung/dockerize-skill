@@ -128,6 +128,7 @@ if (-not (Test-Path -LiteralPath $sourceDir -PathType Container)) {
 if (-not (Test-Path -LiteralPath (Join-Path $sourceDir 'SKILL.md') -PathType Leaf)) {
     throw "Source SKILL.md not found: $sourceDir/SKILL.md"
 }
+& (Join-Path $PSScriptRoot 'check-sync.ps1')
 
 Assert-ManagedDirectory -LiteralPath $AgentsRoot
 Assert-ManagedDirectory -LiteralPath $skillsRoot
