@@ -25,5 +25,5 @@ docker compose run --rm --no-deps --entrypoint sh "$service" -c '
   done
   exit 1
 ' sh "$source_path"
-docker compose create --no-deps "$service" >/dev/null
+docker compose create --no-deps --no-recreate "$service" >/dev/null
 docker compose cp "$service:$source_path/." "$destination"

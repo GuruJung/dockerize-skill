@@ -75,8 +75,8 @@ docker compose run --rm tools <command>
 When outputs are in a named volume, add `compose-export.sh` to provide an explicit export path instead of defaulting to host bind mounts. Fix the service and container output path for the discovered project, accept an optional host destination that defaults to `./results-export`, and use:
 
 ```bash
-docker compose create --no-deps app
+docker compose create --no-deps --no-recreate app
 docker compose cp app:/work/results ./results-export
 ```
 
-Before copying, use a finite container for the selected service to verify that the source directory exists and is non-empty. Creating the service when needed then makes its named volume available without starting the long-lived process. Copy from the container with `docker compose cp`, fail when the source is missing, empty, or copying fails, and leave the named-volume source unchanged. Use a temporary helper service instead when no suitable project service mounts the output volume or its image cannot run the required inspection command.
+Before copying, use a finite container for the selected service to verify that the source directory exists and is non-empty. Creating the service with `--no-recreate` when needed then makes its named volume available without replacing or stopping an existing container. Copy from the container with `docker compose cp`, fail when the source is missing, empty, or copying fails, and leave the named-volume source unchanged. Use a temporary helper service instead when no suitable project service mounts the output volume or its image cannot run the required inspection command.
