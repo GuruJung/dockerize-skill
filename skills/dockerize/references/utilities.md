@@ -12,15 +12,19 @@ docker compose run --rm tools bash
 
 Use `run --rm` for finite commands so containers do not accumulate. Use `exec` only for commands that must run inside an already-running service.
 
+When a repo has a representative one-off executable or command, add `compose-run.sh`. Fix the discovered service and default command in the generated wrapper, forward user arguments, and use `docker compose run --rm`. Do not add the wrapper when the project has no one-off workflow.
+
 ## Compose wrapper scripts
 
-Create these root-level scripts by default when dockerizing a project:
+When the project has a long-lived service or daemon, create these root-level scripts:
 
 - `compose-up.sh`: build and start the Compose stack.
 - `compose-down.sh`: stop the stack without deleting named volumes by default.
 - `compose-logs.sh`: follow logs, optionally for a named service.
 
 Keep the scripts thin wrappers around `docker compose` so users can inspect and modify them easily. Use `set -euo pipefail`, resolve the script directory, and run Compose from the project root. Do not make `compose-down.sh` remove volumes unless the user explicitly asks for reset/destructive cleanup behavior.
+
+Always create `compose-test.sh`. When a named volume contains outputs that users need to export to the host, also create `compose-export.sh`. Do not create `compose-up.sh`, `compose-down.sh`, or `compose-logs.sh` for a project that only runs finite commands.
 
 Use the templates in `assets/` as starting points.
 
@@ -35,7 +39,7 @@ docker compose build <test-service>
 docker compose run --rm <test-service>
 ```
 
-If a repo has test-profile services, add a thin `compose-test.sh` wrapper. Follow this pattern:
+Always add a thin `compose-test.sh` wrapper. Follow this pattern:
 
 - resolve the repo root and `cd` there
 - verify required `.env` files exist
@@ -44,6 +48,7 @@ If a repo has test-profile services, add a thin `compose-test.sh` wrapper. Follo
 - merge every required compose file with `-f`
 - when no test service names are passed, auto-discover services ending in `-test` from `docker compose config --services`
 - build selected test services, then run each with `docker compose run --rm`
+- when no runnable test service is found, print an explanatory message and exit successfully
 
 When tests require heavy image builds, large downloads, or GPU resources, it is acceptable to stop at `docker compose config` unless the user asked for full execution.
 
@@ -67,10 +72,11 @@ docker compose run --rm tools <command>
 
 ## Exporting results
 
-When outputs are in a named volume, provide an explicit export path instead of defaulting to host bind mounts:
+When outputs are in a named volume, add `compose-export.sh` to provide an explicit export path instead of defaulting to host bind mounts. Fix the service and container output path for the discovered project, accept an optional host destination that defaults to `./results-export`, and use:
 
 ```bash
+docker compose create --no-deps app
 docker compose cp app:/work/results ./results-export
 ```
 
-If the producing container is not running, use a temporary helper service that mounts the named volume and copies files to a deliberate host path.
+Creating the service when needed makes its named volume available without starting the long-lived process. Copy from the container with `docker compose cp`, fail when the source is missing or copying fails, and leave the named-volume source unchanged. Use a temporary helper service instead only when no suitable project service mounts the output volume.

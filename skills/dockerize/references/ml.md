@@ -36,9 +36,9 @@ Prefer named volumes for reusable model caches and generated checkpoints:
 ```yaml
 volumes:
   model-cache:
-    name: ${MODEL_CACHE_VOLUME_NAME:-${COMPOSE_PROJECT_NAME:-my-project}_model-cache}
+    name: ${MODEL_CACHE_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_model-cache}
   results:
-    name: ${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME:-my-project}_results}
+    name: ${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_results}
 ```
 
 For very large existing host folders, use targeted read-only bind mounts instead of mounting the entire repo:

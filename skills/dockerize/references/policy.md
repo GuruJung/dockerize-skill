@@ -35,15 +35,15 @@ If a Dockerfile first copies a large folder to create a stable cache layer, do n
 
 ## Compose project and volume names
 
-Add `COMPOSE_PROJECT_NAME=<repo-name>` to `.env.example` and use top-level Compose `name: ${COMPOSE_PROJECT_NAME:-<repo-name>}`. Define named volumes with overrideable names:
+Let Compose determine the project name from its normal precedence rules. Do not add `COMPOSE_PROJECT_NAME` to `.env.example` or add a top-level Compose `name:` solely to force a default. Define shareable named volumes with overrideable names:
 
 ```yaml
 volumes:
   results:
-    name: ${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME:-my-project}_results}
+    name: ${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_results}
 ```
 
-This lets separate worktrees run isolated containers and networks by changing `COMPOSE_PROJECT_NAME`, while still allowing individual heavy volumes to be shared by setting explicit volume-name env vars.
+Compose exposes the selected project name as `COMPOSE_PROJECT_NAME` for interpolation. Its directory-based default keeps separate worktrees isolated, while explicit volume-name env vars still allow selected heavy volumes to be shared.
 
 ## Services and ports
 

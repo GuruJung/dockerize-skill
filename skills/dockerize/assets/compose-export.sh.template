@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+if [[ $# -gt 1 ]]; then
+  printf 'Usage: %s [host-destination]\n' "${0##*/}" >&2
+  exit 2
+fi
+
+# Replace these defaults with the service and output path discovered in the project.
+service="${COMPOSE_EXPORT_SERVICE:-app}"
+source_path="${COMPOSE_EXPORT_PATH:-/work/results}"
+destination="${1:-./results-export}"
+
+mkdir -p "$destination"
+docker compose create --no-deps "$service" >/dev/null
+docker compose cp "$service:$source_path/." "$destination"

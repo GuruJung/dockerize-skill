@@ -1,5 +1,3 @@
-name: ${COMPOSE_PROJECT_NAME:-my-project}
-
 services:
   app:
     build:
@@ -64,8 +62,8 @@ services:
 
 volumes:
   db-data:
-    name: ${DB_DATA_VOLUME_NAME:-${COMPOSE_PROJECT_NAME:-my-project}_db-data}
+    name: ${DB_DATA_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_db-data}
   results:
-    name: ${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME:-my-project}_results}
+    name: ${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_results}
   model-cache:
-    name: ${MODEL_CACHE_VOLUME_NAME:-${COMPOSE_PROJECT_NAME:-my-project}_model-cache}
+    name: ${MODEL_CACHE_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_model-cache}

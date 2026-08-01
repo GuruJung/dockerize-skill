@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+# Replace the service and command with the representative one-off workflow.
+service="${COMPOSE_RUN_SERVICE:-tools}"
+docker compose run --rm "$service" python scripts/task.py "$@"

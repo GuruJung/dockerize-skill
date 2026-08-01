@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+test_services=("$@")
+if [[ ${#test_services[@]} -eq 0 ]]; then
+  while IFS= read -r service; do
+    case "$service" in
+      *-test) test_services+=("$service") ;;
+    esac
+  done < <(docker compose --profile test config --services)
+fi
+
+if [[ ${#test_services[@]} -eq 0 ]]; then
+  printf 'No runnable Compose test services were found; skipping.\n'
+  exit 0
+fi
+
+docker compose --profile test build "${test_services[@]}"
+for service in "${test_services[@]}"; do
+  docker compose --profile test run --rm "$service"
+done

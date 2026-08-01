@@ -11,8 +11,8 @@ description: 전역 패키지, 가상환경, node_modules, 생성 파일, 포트
 2. 소스를 이미지에 복사하는 `Dockerfile`과 `compose.yaml`을 우선한다. 컨테이너가 생성한 파일이 호스트 checkout을 오염시키거나 root 소유가 될 수 있으므로 기본적으로 전체 저장소를 bind mount하지 않는다.
 3. `.dockerignore`를 일찍 추가한다. 이미지에 반드시 복사해야 하는 경우가 아니라면 생성된 의존성, 빌드 출력, 캐시, secret/로컬 전용 설정, VCS 파일, 루트의 `/dev/` 및 `/dev_*/` 디렉터리, 대용량 모델/데이터/출력 폴더를 제외한다.
 4. 데이터베이스, 큐, object store, 캐시 및 유사한 보조 서비스는 Compose 내부 네트워크에 유지한다. 사용자가 호스트에서 직접 접근해야 하는 경우가 아니면 호스트 포트를 publish하지 않는다.
-5. 컨테이너 제거 후에도 유지해야 하는 영속 출력, 결과, 모델 캐시, 데이터베이스 데이터 및 기타 파일에는 named volume을 사용한다. 기본 volume 이름은 `COMPOSE_PROJECT_NAME`을 기반으로 하고, worktree가 stack을 격리하면서 선택한 대용량 volume을 공유할 수 있도록 volume별 환경 변수 override를 제공한다.
-6. 프로젝트 루트에 기본 Compose 래퍼 스크립트인 `compose-up.sh`, `compose-down.sh`, `compose-logs.sh`를 추가한다.
+5. 컨테이너 제거 후에도 유지해야 하는 영속 출력, 결과, 모델 캐시, 데이터베이스 데이터 및 기타 파일에는 named volume을 사용한다. Compose가 자동으로 결정한 `COMPOSE_PROJECT_NAME`을 기본 volume 이름에 사용하고, worktree가 stack을 격리하면서 선택한 대용량 volume을 공유할 수 있도록 volume별 환경 변수 override를 제공한다.
+6. 프로젝트 루트에 필요한 Compose 래퍼 스크립트를 추가한다. long-lived service나 daemon이 있으면 `compose-up.sh`, `compose-down.sh`, `compose-logs.sh`를 추가하고, 대표적인 일회성 실행 파일이나 명령이 있으면 `compose-run.sh`를 추가한다. `compose-test.sh`는 항상 추가하고, 호스트로 반출할 출력 named volume이 있으면 `compose-export.sh`를 추가한다.
 7. 호스트 로컬 package manager가 아니라 Compose를 통해 검증한다. 최소한 `docker compose config`를 실행하고 test profile 서비스가 있으면 사용한다.
 
 ## 결정할 사항
@@ -21,12 +21,12 @@ description: 전역 패키지, 가상환경, node_modules, 생성 파일, 포트
 - **Secret 및 설정**: `.env`, credential, private key, token, 추적되지 않는 머신 로컬 설정 같은 secret이나 로컬 전용 설정을 이미지에 절대 `COPY`하지 않는다. 환경 변수 주입에는 `env_file`을 사용하고, 애플리케이션이 런타임에 secret 파일을 요구하면 대상이 제한된 read-only bind mount를 사용한다. 버전 관리되며 애플리케이션 소스의 일부인 비밀이 아닌 프로젝트 설정은 정상적으로 복사할 수 있다.
 - **대용량 asset**: `assets/`, `examples/`, `samples/`, `dataset_dir/`, 모델 weight, dataset 및 cache 같은 매우 큰 폴더에는 대상이 제한된 read-only bind 또는 named volume을 우선한다. 대용량 폴더를 이미지에 복사할지, 호스트에서 bind mount할지, named volume에 저장할지 불분명하면 사용자에게 질문한다.
 - **사용자 identity**: non-root 컨테이너를 강제하지 않는다. base image나 프로젝트가 이미 깔끔하게 지원할 때는 문서화된 non-root 사용자를 사용하고, 그 외에는 base image의 기본 사용자를 유지한다.
-- **출력**: `results:` 또는 `artifacts:` 같은 named volume을 기본으로 사용한다. 격리보다 즉시 호스트 접근이 더 중요할 때만 host bind mount를 사용한다.
-- **프로젝트 및 volume 이름**: `.env.example`에 `COMPOSE_PROJECT_NAME`을 추가하고, 최상위 Compose에 `name: ${COMPOSE_PROJECT_NAME:-<repo-name>}`을 추가하며, volume 이름은 `${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME:-<repo-name>}_results}`와 같이 정의한다.
+- **출력**: `results:` 또는 `artifacts:` 같은 named volume을 기본으로 사용한다. 격리보다 즉시 호스트 접근이 더 중요할 때만 host bind mount를 사용한다. 호스트로 반출할 출력 named volume이 있으면 `compose-export.sh`를 제공한다.
+- **프로젝트 및 volume 이름**: `.env.example`에 `COMPOSE_PROJECT_NAME`을 추가하거나 최상위 Compose `name:`으로 프로젝트 이름을 강제하지 않는다. Compose가 자동으로 결정한 `COMPOSE_PROJECT_NAME`을 사용하고, 공유할 수 있는 volume 이름은 `${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_results}`와 같이 volume별 override가 가능하도록 정의한다.
 - **GPU**: training, finetuning, inference, CUDA, PyTorch, TensorFlow 또는 유사 도구가 감지되거나 요청되면 ML 프로젝트에 GPU 지원을 추가한다.
 - **Training과 inference**: 의존성 또는 런타임 요구사항이 다르면 별도 서비스나 Dockerfile target을 사용한다.
-- **유틸리티 스크립트**: 호스트 로컬에서 스크립트를 실행하는 대신 `docker compose run --rm <service> <command>` 또는 전용 `tools` 서비스를 우선한다.
-- **Compose 래퍼**: 프로젝트별 Compose flag를 외우지 않고 일반 작업을 반복할 수 있도록 `compose-up.sh`, `compose-down.sh`, `compose-logs.sh`를 생성한다.
+- **유틸리티 스크립트**: 호스트 로컬에서 스크립트를 실행하는 대신 `docker compose run --rm <service> <command>` 또는 전용 `tools` 서비스를 우선한다. 대표적인 일회성 실행 파일이나 명령이 있으면 발견한 service와 기본 명령을 고정하고 사용자 인자를 전달하는 `compose-run.sh`를 생성한다.
+- **Compose 래퍼**: long-lived service나 daemon이 있을 때만 `compose-up.sh`, `compose-down.sh`, `compose-logs.sh`를 생성한다. `compose-test.sh`는 항상 생성하되 실행 가능한 test service가 없으면 안내 후 성공 종료하게 한다. 호스트로 반출할 출력 named volume이 있으면 `compose-export.sh`를 생성한다.
 
 ## References
 
@@ -46,3 +46,6 @@ description: 전역 패키지, 가상환경, node_modules, 생성 파일, 포트
 - `assets/compose-up.sh.template`
 - `assets/compose-down.sh.template`
 - `assets/compose-logs.sh.template`
+- `assets/compose-run.sh.template`
+- `assets/compose-test.sh.template`
+- `assets/compose-export.sh.template`
