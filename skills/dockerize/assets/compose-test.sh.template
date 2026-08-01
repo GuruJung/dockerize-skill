@@ -5,11 +5,15 @@ cd "$(dirname "$0")"
 
 test_services=("$@")
 if [[ ${#test_services[@]} -eq 0 ]]; then
+  if ! configured_services="$(docker compose --profile test config --services)"; then
+    printf 'Failed to discover Compose test services.\n' >&2
+    exit 1
+  fi
   while IFS= read -r service; do
     case "$service" in
       *-test) test_services+=("$service") ;;
     esac
-  done < <(docker compose --profile test config --services)
+  done <<< "$configured_services"
 fi
 
 if [[ ${#test_services[@]} -eq 0 ]]; then

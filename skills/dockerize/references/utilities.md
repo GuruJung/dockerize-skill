@@ -48,7 +48,7 @@ Always add a thin `compose-test.sh` wrapper. Follow this pattern:
 - merge every required compose file with `-f`
 - when no test service names are passed, auto-discover services ending in `-test` from `docker compose config --services`
 - build selected test services, then run each with `docker compose run --rm`
-- when no runnable test service is found, print an explanatory message and exit successfully
+- propagate Compose configuration or discovery failures; only when successful discovery finds no runnable test service, print an explanatory message and exit successfully
 
 When tests require heavy image builds, large downloads, or GPU resources, it is acceptable to stop at `docker compose config` unless the user asked for full execution.
 
@@ -79,4 +79,4 @@ docker compose create --no-deps app
 docker compose cp app:/work/results ./results-export
 ```
 
-Creating the service when needed makes its named volume available without starting the long-lived process. Copy from the container with `docker compose cp`, fail when the source is missing or copying fails, and leave the named-volume source unchanged. Use a temporary helper service instead only when no suitable project service mounts the output volume.
+Before copying, use a finite container for the selected service to verify that the source directory exists and is non-empty. Creating the service when needed then makes its named volume available without starting the long-lived process. Copy from the container with `docker compose cp`, fail when the source is missing, empty, or copying fails, and leave the named-volume source unchanged. Use a temporary helper service instead when no suitable project service mounts the output volume or its image cannot run the required inspection command.

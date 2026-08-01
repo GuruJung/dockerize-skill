@@ -14,5 +14,16 @@ source_path="${COMPOSE_EXPORT_PATH:-/work/results}"
 destination="${1:-./results-export}"
 
 mkdir -p "$destination"
+docker compose run --rm --no-deps --entrypoint sh "$service" -c '
+  source_path=$1
+  [ -d "$source_path" ] || exit 1
+  set -- "$source_path"/.[!.]* "$source_path"/..?* "$source_path"/*
+  for path do
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      exit 0
+    fi
+  done
+  exit 1
+' sh "$source_path"
 docker compose create --no-deps "$service" >/dev/null
 docker compose cp "$service:$source_path/." "$destination"
