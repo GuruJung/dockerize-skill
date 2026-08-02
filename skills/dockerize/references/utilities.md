@@ -16,13 +16,15 @@ When a repo has a representative one-off executable or command, add `compose-run
 
 ## Compose wrapper scripts
 
-When the project has a long-lived service or daemon, create these root-level scripts:
+Create these root-level scripts only when users will manage at least one long-lived process with `docker compose up`. A long-lived process keeps waiting for requests or work, such as a server, worker, daemon, or persistent side service; a finite command remains a one-off workload even when declared under Compose `services:`.
 
 - `compose-up.sh`: build and start the Compose stack.
 - `compose-down.sh`: stop the stack without deleting named volumes by default.
 - `compose-logs.sh`: follow logs, optionally for a named service.
 
 Keep the scripts thin wrappers around `docker compose` so users can inspect and modify them easily. Use `set -euo pipefail`, resolve the script directory, and run Compose from the project root. Do not make `compose-down.sh` remove volumes unless the user explicitly asks for reset/destructive cleanup behavior.
+
+When long-lived processes and one-off workloads coexist, use lifecycle wrappers for the long-lived stack and `docker compose run --rm` for the one-off workloads. Do not add `sleep infinity`, `tail -f /dev/null`, or an equivalent idle command to justify lifecycle wrappers unless the user explicitly requests an interactive workspace.
 
 Always create `compose-test.sh`. When a named volume contains outputs that users need to export to the host, also create `compose-export.sh`. Do not create `compose-up.sh`, `compose-down.sh`, or `compose-logs.sh` for a project that only runs finite commands.
 

@@ -7,12 +7,12 @@ description: 전역 패키지, 가상환경, node_modules, 생성 파일, 포트
 
 ## 핵심 워크플로
 
-1. Docker 파일을 작성하기 전에 프로젝트의 기존 `compose.yaml`, `docker-compose.yaml`, 래퍼 스크립트, `.env.example`, 의존성 manifest, entrypoint, 스크립트, 예상 출력, 대용량 데이터/모델 폴더, 보조 서비스, 포트 및 GPU 필요 여부를 확인한다.
+1. Docker 파일을 작성하기 전에 프로젝트의 기존 `compose.yaml`, `docker-compose.yaml`, 래퍼 스크립트, `.env.example`, 의존성 manifest, entrypoint, 기본 command, 스크립트, 예상 출력, 대용량 데이터/모델 폴더, 보조 서비스, 포트 및 GPU 필요 여부를 확인한다. 각 process가 요청이나 작업을 기다리며 계속 실행되는지, 작업 후 종료되는지도 판정한다.
 2. 소스를 이미지에 복사하는 `Dockerfile`과 `compose.yaml`을 우선한다. 컨테이너가 생성한 파일이 호스트 checkout을 오염시키거나 root 소유가 될 수 있으므로 기본적으로 전체 저장소를 bind mount하지 않는다.
 3. `.dockerignore`를 일찍 추가한다. 이미지에 반드시 복사해야 하는 경우가 아니라면 생성된 의존성, 빌드 출력, 캐시, secret/로컬 전용 설정, VCS 파일, 루트의 `/dev/` 및 `/dev_*/` 디렉터리, 대용량 모델/데이터/출력 폴더를 제외한다.
 4. 데이터베이스, 큐, object store, 캐시 및 유사한 보조 서비스는 Compose 내부 네트워크에 유지한다. 사용자가 호스트에서 직접 접근해야 하는 경우가 아니면 호스트 포트를 publish하지 않는다.
 5. 컨테이너 제거 후에도 유지해야 하는 영속 출력, 결과, 모델 캐시, 데이터베이스 데이터 및 기타 파일에는 named volume을 사용한다. Compose가 자동으로 결정한 `COMPOSE_PROJECT_NAME`을 기본 volume 이름에 사용하고, worktree가 stack을 격리하면서 선택한 대용량 volume을 공유할 수 있도록 volume별 환경 변수 override를 제공한다.
-6. 프로젝트 루트에 필요한 Compose 래퍼 스크립트를 추가한다. long-lived service나 daemon이 있으면 `compose-up.sh`, `compose-down.sh`, `compose-logs.sh`를 추가하고, 대표적인 일회성 실행 파일이나 명령이 있으면 `compose-run.sh`를 추가한다. `compose-test.sh`는 항상 추가하고, 호스트로 반출할 출력 named volume이 있으면 `compose-export.sh`를 추가한다.
+6. 프로젝트 루트에 필요한 Compose 래퍼 스크립트를 추가한다. 사용자가 `docker compose up`으로 운영할 long-lived process가 하나 이상 있을 때만 `compose-up.sh`, `compose-down.sh`, `compose-logs.sh`를 추가한다. 종료형 작업은 Compose service여도 `docker compose build <service>`와 `docker compose run --rm <service> <command>`를 사용한다. 대표적인 일회성 실행 파일이나 명령이 있으면 `compose-run.sh`를 추가하고, `compose-test.sh`는 항상 추가하며, 호스트로 반출할 출력 named volume이 있으면 `compose-export.sh`를 추가한다.
 7. 호스트 로컬 package manager가 아니라 Compose를 통해 검증한다. 최소한 `docker compose config`를 실행하고 test profile 서비스가 있으면 사용한다.
 
 ## 결정할 사항
@@ -26,7 +26,7 @@ description: 전역 패키지, 가상환경, node_modules, 생성 파일, 포트
 - **GPU**: training, finetuning, inference, CUDA, PyTorch, TensorFlow 또는 유사 도구가 감지되거나 요청되면 ML 프로젝트에 GPU 지원을 추가한다.
 - **Training과 inference**: 의존성 또는 런타임 요구사항이 다르면 별도 서비스나 Dockerfile target을 사용한다.
 - **유틸리티 스크립트**: 호스트 로컬에서 스크립트를 실행하는 대신 `docker compose run --rm <service> <command>` 또는 전용 `tools` 서비스를 우선한다. 대표적인 일회성 실행 파일이나 명령이 있으면 발견한 service와 기본 명령을 고정하고 사용자 인자를 전달하는 `compose-run.sh`를 생성한다.
-- **Compose 래퍼**: long-lived service나 daemon이 있을 때만 `compose-up.sh`, `compose-down.sh`, `compose-logs.sh`를 생성한다. `compose-test.sh`는 항상 생성하되 실행 가능한 test service가 없으면 안내 후 성공 종료하게 한다. 호스트로 반출할 출력 named volume이 있으면 `compose-export.sh`를 생성한다.
+- **Compose 래퍼**: Compose의 `services:` 항목 자체가 아니라 서버, worker, daemon, 영속 side service처럼 계속 대기하는 long-lived process를 기준으로 판단한다. long-lived process와 종료형 작업이 함께 있으면 lifecycle wrapper는 long-lived stack에만 사용하고 종료형 작업은 `run --rm`으로 실행한다. wrapper를 만들기 위해 `sleep infinity`, `tail -f /dev/null` 같은 idle command를 추가하지 않는다. 단, 사용자가 interactive workspace를 명시적으로 요구한 경우는 예외다. `compose-test.sh`는 항상 생성하되 실행 가능한 test service가 없으면 안내 후 성공 종료하게 하고, 호스트로 반출할 출력 named volume이 있으면 `compose-export.sh`를 생성한다.
 
 ## References
 
@@ -38,7 +38,7 @@ description: 전역 패키지, 가상환경, node_modules, 생성 파일, 포트
 
 ## Templates
 
-다음 template을 시작점으로 사용한 뒤 발견한 stack에 맞게 조정한다.
+다음 template을 시작점으로 사용한 뒤 발견한 stack에 맞게 조정한다. lifecycle wrapper template은 위 생성 조건을 만족할 때만 사용한다.
 
 - `assets/Dockerfile.template`
 - `assets/compose.yaml.template`
