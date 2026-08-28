@@ -1,0 +1,11 @@
+# Copy this block into each wrapper that can create a container using the
+# shared Hugging Face cache. Replace the fallback while dockerizing.
+hf_cache_volume_name="${HF_CACHE_VOLUME_NAME:-replace-with-main-project-name_hf-cache}"
+if ! docker volume inspect "$hf_cache_volume_name" >/dev/null 2>&1; then
+  if ! docker volume create "$hf_cache_volume_name" >/dev/null; then
+    printf 'Failed to create shared Hugging Face cache volume: %s\n' \
+      "$hf_cache_volume_name" >&2
+    exit 1
+  fi
+fi
+export HF_CACHE_VOLUME_NAME="$hf_cache_volume_name"

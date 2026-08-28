@@ -49,9 +49,22 @@ services:
   #     context: .
   #     dockerfile: Dockerfile
   #   command: ["python", "train.py"]
+  #   environment:
+  #     HF_HOME: /cache/huggingface
+  #     HF_TOKEN: ${HF_TOKEN:-}
   #   volumes:
-  #     - model-cache:/work/models
+  #     # Default for Hugging Face: a shared external volume whose literal
+  #     # fallback is resolved from the main worktree while dockerizing.
+  #     - hf-cache:/cache/huggingface
   #     - results:/work/results
+  #   # Bind alternative for native Linux when host cache access or ownership
+  #   # is required: replace the hf-cache item above with the long-syntax bind
+  #   # below and run the service as the host's numeric UID/GID.
+  #   # user: "${HOST_UID:?set HOST_UID}:${HOST_GID:?set HOST_GID}"
+  #   #   - type: bind
+  #   #     source: ${HF_CACHE_DIR:-${HOME}/.cache/huggingface}
+  #   #     target: /cache/huggingface
+  #   #     read_only: false
   #   deploy:
   #     resources:
   #       reservations:
@@ -67,3 +80,8 @@ volumes:
     name: ${RESULTS_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_results}
   model-cache:
     name: ${MODEL_CACHE_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_model-cache}
+  hf-cache:
+    # Replace this literal fallback with the validated main-worktree Compose
+    # project name. Do not use the current worktree's COMPOSE_PROJECT_NAME.
+    name: ${HF_CACHE_VOLUME_NAME:-replace-with-main-project-name_hf-cache}
+    external: true

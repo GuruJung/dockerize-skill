@@ -1,0 +1,31 @@
+# Copy this block into each applicable wrapper only for a native-Linux
+# read-write Hugging Face cache bind. Docker Desktop should keep the image's
+# supported user instead of forcing the host's numeric UID/GID.
+hf_cache_dir="${HF_CACHE_DIR:-${HOME:?HOME is required}/.cache/huggingface}"
+if ! mkdir -p -- "$hf_cache_dir"; then
+  printf 'Failed to create Hugging Face cache directory: %s\n' "$hf_cache_dir" >&2
+  exit 1
+fi
+if [[ ! -d "$hf_cache_dir" || ! -w "$hf_cache_dir" ]]; then
+  printf 'Hugging Face cache directory is not writable: %s\n' "$hf_cache_dir" >&2
+  exit 1
+fi
+
+host_uid="${HOST_UID:-$(id -u)}"
+host_gid="${HOST_GID:-$(id -g)}"
+case "$host_uid" in
+  ''|*[!0-9]*)
+    printf 'HOST_UID must be a numeric user ID: %s\n' "$host_uid" >&2
+    exit 1
+    ;;
+esac
+case "$host_gid" in
+  ''|*[!0-9]*)
+    printf 'HOST_GID must be a numeric group ID: %s\n' "$host_gid" >&2
+    exit 1
+    ;;
+esac
+
+export HF_CACHE_DIR="$hf_cache_dir"
+export HOST_UID="$host_uid"
+export HOST_GID="$host_gid"

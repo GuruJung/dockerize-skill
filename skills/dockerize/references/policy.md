@@ -45,6 +45,8 @@ volumes:
 
 Compose exposes the selected project name as `COMPOSE_PROJECT_NAME` for interpolation. Its directory-based default keeps separate worktrees isolated, while explicit volume-name env vars still allow selected heavy volumes to be shared.
 
+Hugging Face caches are the deliberate exception: follow `references/ml.md` to give the full `HF_HOME` a main-worktree-derived shared external volume name so large models and datasets are not downloaded once per worktree. Keep other project resources isolated by the current worktree's `COMPOSE_PROJECT_NAME`.
+
 ## Services and ports
 
 Keep side services internal by default. Compose services can reach each other by service name, so databases and queues usually do not need host `ports:`.
