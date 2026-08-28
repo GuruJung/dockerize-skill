@@ -63,7 +63,7 @@ PowerShell에서는 다음 명령으로 설치한다.
 .\scripts\install.ps1
 ```
 
-설치기는 동기화를 먼저 검사한 뒤 영어 `skills/dockerize` 폴더만 `$HOME/.agents/skills/dockerize`에 복사한다. 한국어 원본, 동기화 파일 및 개발 지침은 설치본에 포함되지 않는다.
+설치기는 동기화를 먼저 검사한 뒤 영어 `skills/dockerize` 폴더만 `$HOME/.agents/skills/dockerize`에 복사한다. 한국어 스킬 파일, 동기화 파일 및 개발 지침은 설치본에 포함되지 않는다.
 
 두 설치기는 기본적으로 `$HOME/.agents`를 사용한다. 격리 테스트나 사용자 지정 위치에는 Bash의 `--agents-root <path>` 또는 PowerShell의 `-AgentsRoot <path>`를 사용한다.
 
