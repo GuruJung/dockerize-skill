@@ -52,6 +52,12 @@ for powershell_script in "$repo_root/scripts/check-sync.ps1" "$repo_root/scripts
   grep -Fq 'Get-FileHash -LiteralPath' "$powershell_script" ||
     fail "PowerShell SHA-256 hashing is missing: $powershell_script"
 done
+grep -Fq 'Korean skill changed after the last semantic sync review; synchronize both skill files and record sync again' \
+  "$repo_root/scripts/check-sync.ps1" ||
+  fail 'PowerShell Korean stale-sync guidance is not direction-neutral'
+grep -Fq 'English skill changed after the last semantic sync review; synchronize both skill files and record sync again' \
+  "$repo_root/scripts/check-sync.ps1" ||
+  fail 'PowerShell English stale-sync guidance is not direction-neutral'
 grep -Fq "& (Join-Path \$PSScriptRoot 'check-sync.ps1')" "$repo_root/scripts/install.ps1" ||
   fail 'PowerShell installer does not enforce the sync check'
 grep -Fq '[IO.File]::WriteAllText' "$repo_root/scripts/record-sync.ps1" ||
@@ -81,9 +87,13 @@ cp "$repo_root/sync/dockerize.sha256" "$sync_repo/sync/dockerize.sha256"
 
 bash "$sync_repo/scripts/check-sync.sh" >/dev/null
 printf '\n<!-- synchronization test -->\n' >>"$sync_repo/locales/ko/dockerize/SKILL.md"
-if bash "$sync_repo/scripts/check-sync.sh" >/dev/null 2>&1; then
-  fail 'sync check accepted a changed Korean source'
+korean_sync_error="$test_root/korean-sync-error"
+if bash "$sync_repo/scripts/check-sync.sh" >/dev/null 2>"$korean_sync_error"; then
+  fail 'sync check accepted a changed Korean skill'
 fi
+grep -Fq 'Korean skill changed after the last semantic sync review; synchronize both skill files and record sync again' \
+  "$korean_sync_error" ||
+  fail 'Korean stale-sync guidance is not direction-neutral'
 
 stale_install_root="$test_root/stale sync install"
 mkdir -p -- "$stale_install_root/skills/dockerize"
@@ -105,9 +115,13 @@ cmp -s "$test_root/manifest-first" "$sync_repo/sync/dockerize.sha256" ||
 cp "$sync_repo/skills/dockerize/SKILL.md" "$test_root/english-snapshot"
 cp "$sync_repo/sync/dockerize.sha256" "$test_root/manifest-snapshot"
 printf '\n<!-- English-only change -->\n' >>"$sync_repo/skills/dockerize/SKILL.md"
-if bash "$sync_repo/scripts/check-sync.sh" >/dev/null 2>&1; then
+english_sync_error="$test_root/english-sync-error"
+if bash "$sync_repo/scripts/check-sync.sh" >/dev/null 2>"$english_sync_error"; then
   fail 'sync check accepted an English-only change'
 fi
+grep -Fq 'English skill changed after the last semantic sync review; synchronize both skill files and record sync again' \
+  "$english_sync_error" ||
+  fail 'English stale-sync guidance is not direction-neutral'
 cp "$test_root/english-snapshot" "$sync_repo/skills/dockerize/SKILL.md"
 
 printf 'version=1\n' >>"$sync_repo/sync/dockerize.sha256"

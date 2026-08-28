@@ -46,10 +46,10 @@ foreach ($key in @('korean_sha256', 'english_sha256')) {
 $actualKorean = (Get-FileHash -LiteralPath $koreanFile -Algorithm SHA256).Hash.ToLowerInvariant()
 $actualEnglish = (Get-FileHash -LiteralPath $englishFile -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($values['korean_sha256'].ToLowerInvariant() -ne $actualKorean) {
-    throw 'Korean source changed after the last semantic sync review; translate and record sync again'
+    throw 'Korean skill changed after the last semantic sync review; synchronize both skill files and record sync again'
 }
 if ($values['english_sha256'].ToLowerInvariant() -ne $actualEnglish) {
-    throw 'English skill changed after the last semantic sync review; update both versions and record sync again'
+    throw 'English skill changed after the last semantic sync review; synchronize both skill files and record sync again'
 }
 
-Write-Host 'Korean source and English skill are in sync.'
+Write-Host 'Korean and English skill files are in sync.'

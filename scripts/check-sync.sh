@@ -24,7 +24,7 @@ korean_file="$repo_root/locales/ko/dockerize/SKILL.md"
 english_file="$repo_root/skills/dockerize/SKILL.md"
 manifest="$repo_root/sync/dockerize.sha256"
 
-[[ -f "$korean_file" ]] || die "Korean source not found: $korean_file"
+[[ -f "$korean_file" ]] || die "Korean skill not found: $korean_file"
 [[ -f "$english_file" ]] || die "English skill not found: $english_file"
 [[ -f "$manifest" && ! -L "$manifest" ]] || die "sync manifest not found or unsafe: $manifest"
 
@@ -65,7 +65,7 @@ actual_korean="$(hash_file "$korean_file")"
 actual_english="$(hash_file "$english_file")"
 recorded_korean="$(printf '%s\n' "$korean_sha256" | tr '[:upper:]' '[:lower:]')"
 recorded_english="$(printf '%s\n' "$english_sha256" | tr '[:upper:]' '[:lower:]')"
-[[ "$recorded_korean" == "$actual_korean" ]] || die 'Korean source changed after the last semantic sync review; translate and record sync again'
-[[ "$recorded_english" == "$actual_english" ]] || die 'English skill changed after the last semantic sync review; update both versions and record sync again'
+[[ "$recorded_korean" == "$actual_korean" ]] || die 'Korean skill changed after the last semantic sync review; synchronize both skill files and record sync again'
+[[ "$recorded_english" == "$actual_english" ]] || die 'English skill changed after the last semantic sync review; synchronize both skill files and record sync again'
 
-printf 'Korean source and English skill are in sync.\n'
+printf 'Korean and English skill files are in sync.\n'

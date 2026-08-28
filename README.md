@@ -1,8 +1,8 @@
 # Dockerize 스킬 개발
 
-이 저장소는 개인용 `dockerize` 스킬의 정본을 관리한다. 스킬 내용은 한국어로 먼저 작성하고, Codex가 실제로 읽고 전역 설치하는 파일은 의미가 동등한 영어본으로 유지한다.
+이 저장소는 개인용 `dockerize` 스킬의 의미가 동등한 한국어본과 영어본을 관리한다. 사용자가 미리 수정한 파일이 있으면 작업 시작 시 Git 상태와 mtime으로 해당 작업의 정본을 판정하며, Codex가 실제로 읽고 전역 설치하는 파일은 영어본이다.
 
-- 한국어 콘텐츠 정본: `locales/ko/dockerize/SKILL.md`
+- 한국어 스킬: `locales/ko/dockerize/SKILL.md`
 - 영어 배포본: `skills/dockerize/SKILL.md`
 - 동기화 상태: `sync/dockerize.sha256`
 - 저장소 작업 규칙: `AGENTS.md`
@@ -18,15 +18,15 @@ Codex의 사용자 스킬 설치 위치는 `$HOME/.agents/skills`이다. 자세�
 
 ## 스킬 수정 흐름
 
-이 저장소에서 평소처럼 한국어로 변경을 요청하면 `AGENTS.md`에 따라 다음 순서로 작업한다.
+이 저장소에서는 `AGENTS.md`에 따라 다음 순서로 작업한다.
 
-1. 한국어 정본을 먼저 수정한다.
-2. 규칙과 조건을 보존해 영어 `SKILL.md`를 자연스러운 명령문으로 번역한다.
-3. 두 파일의 의미 동등성을 검토한다.
-4. 동기화 해시를 기록하고 검사한다.
-5. 양쪽 스킬을 검증하고 회귀 테스트를 실행한다.
+1. 두 `SKILL.md`를 편집하기 전에 HEAD 대비 staged 또는 unstaged modified 상태와 filesystem mtime을 한 번 확인한다.
+2. modified 후보가 하나면 그 파일을, 둘이면 mtime이 더 최신인 파일을 해당 작업의 정본으로 선택한다.
+3. 후보가 없으면 요청에 자연스러운 언어로 시작한다. exact mtime 동률, 파일 누락 또는 modified 이외의 삭제·rename·unmerged 등 안전하지 않은 Git 상태에서는 사용자에게 정본 또는 복구 방법을 묻는다.
+4. 선택한 정본의 규칙과 조건을 보존해 다른 언어의 `SKILL.md`를 의미가 동등한 명령문으로 맞춘다. 작업 중 바뀐 mtime으로 정본을 다시 판정하지 않는다.
+5. 두 파일의 의미 동등성을 검토하고 동기화 해시를 기록·검사한 뒤, 양쪽 스킬과 전체 회귀 테스트를 실행한다.
 
-영어본이나 `$HOME/.agents/skills/dockerize`의 설치본을 직접 수정하지 않는다. References, assets 및 `agents/openai.yaml`은 영어 단일본으로 관리한다.
+`$HOME/.agents/skills/dockerize`의 설치본은 직접 수정하지 않는다. References, assets 및 `agents/openai.yaml`은 영어 단일본으로 관리한다.
 
 ## 동기화 기록과 검사
 

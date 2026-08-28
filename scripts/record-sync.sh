@@ -25,7 +25,7 @@ english_file="$repo_root/skills/dockerize/SKILL.md"
 sync_dir="$repo_root/sync"
 manifest="$sync_dir/dockerize.sha256"
 
-[[ -f "$korean_file" ]] || die "Korean source not found: $korean_file"
+[[ -f "$korean_file" ]] || die "Korean skill not found: $korean_file"
 [[ -f "$english_file" ]] || die "English skill not found: $english_file"
 [[ ! -L "$sync_dir" ]] || die "refusing symbolic-link sync directory: $sync_dir"
 [[ ! -L "$manifest" ]] || die "refusing symbolic-link sync manifest: $manifest"
