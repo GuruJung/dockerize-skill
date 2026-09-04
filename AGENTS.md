@@ -1,13 +1,23 @@
-# Dockerize skill authoring rules
+# Dockerize Skill Authoring Rules
 
-이 저장소에서 `dockerize` 스킬의 동작이나 `SKILL.md`를 수정할 때 다음 순서를 반드시 따른다.
+When changing this repository's user documentation or its `dockerize` skill, follow the relevant ordered workflow below.
 
-1. 두 `SKILL.md` 중 어느 하나라도 편집하기 전에 `locales/ko/dockerize/SKILL.md`와 `skills/dockerize/SKILL.md`의 Git 상태와 filesystem mtime을 한 번 확인한다. HEAD에 비해 index 또는 working tree에서 modified인 기존 파일만 정본 후보로 삼는다.
-2. 후보가 하나면 그 파일을, 둘이면 mtime이 더 최신인 파일을 해당 작업에서 사용자의 의도가 담긴 정본으로 선택한다. 후보가 없으면 요청에 자연스러운 언어로 시작한다. 후보들의 mtime이 정확히 같거나 파일이 누락되었거나 modified 이외의 삭제·rename·unmerged 등 안전하지 않은 Git 상태이면 편집하지 말고 사용자에게 정본 또는 복구 방법을 묻는다.
-3. 선택한 정본을 기준으로 다른 언어의 `SKILL.md`를 의미가 동등한 명령문으로 맞춘다. 에이전트가 편집하며 바꾼 mtime으로 작업 도중 정본을 다시 선택하지 않는다.
-4. 규칙, 조건, 우선순위와 목록 순서를 보존한다. 경로, 명령, 환경 변수, 코드 키워드는 번역하지 않는다. `$HOME/.agents/skills/dockerize`의 전역 설치본을 직접 수정하지 않는다.
-5. 의미 동등성을 검토한 뒤 `scripts/record-sync.sh` 또는 `scripts/record-sync.ps1`을 실행한다.
-6. `scripts/check-sync.sh` 또는 `scripts/check-sync.ps1`, 양쪽 `SKILL.md`의 `quick_validate.py`, 전체 회귀 테스트를 실행한다.
-7. 스킬 범위나 기본 프롬프트가 달라지는 변경이면 영어 단일본인 `skills/dockerize/agents/openai.yaml`도 별도로 검토한다.
+## README translations
 
-References, assets, `agents/openai.yaml`, 설치 도구만 변경하는 작업에는 한영 동기화를 적용하지 않는다. 동기화 manifest는 두 파일이 마지막 의미 검토 이후 바뀌지 않았는지만 증명하며 번역 품질을 증명하지 않는다.
+- `README.md` is the English document and `README-ko.md` is its Korean counterpart. They must have the same meaning and strength, structure, commands, paths, identifiers, and constraints. Neither language is a fixed source.
+- For an existing tracked README pair, after modifying the intended source and before translating the counterpart, snapshot both files' `git status --short` output and filesystem mtimes once. A normal modification candidate is a file with exactly ` M`, `M `, or `MM` status. If only one file is a candidate, use it as the source; if both are candidates, use the file with the newer mtime.
+- A clean README pair is not a synchronization target. If the mtimes are equal or either file has an `A`, `D`, `R`, `U`, untracked, or other non-`M` change, do not select a source arbitrarily; stop and obtain the user's explicit choice.
+- Keep the README source selection fixed until that synchronization task finishes. Do not select it again after editing the counterpart. If either file changes unexpectedly, stop rather than overwrite it.
+- Translate the counterpart with the same meaning and strength while preserving commands, paths, identifiers, enum values, and YAML or JSON keys. Compare the complete documents, then pass `tests/test-readme-sync.sh`. This test does not replace semantic review.
+
+## Skill translations
+
+1. Before editing either `SKILL.md`, inspect the Git status and filesystem mtime of `locales/ko/dockerize/SKILL.md` and `skills/dockerize/SKILL.md` once. Only an existing file that is modified in the index or working tree relative to `HEAD` is a source candidate.
+2. If there is one candidate, select it as the source of the user's intent for that task. If there are two, select the candidate with the newer mtime. If neither is modified, begin in the natural language of the request. If candidate mtimes are exactly equal, a file is missing, or Git reports an unsafe state such as deletion, rename, or unmerged content, do not edit; ask the user which source or recovery path to use.
+3. Use the selected source to make the other language's `SKILL.md` semantically equivalent. Do not select the source again based on mtimes changed by the agent during the task.
+4. Preserve rules, conditions, precedence, and list order. Do not translate paths, commands, environment variables, or code keywords. Do not edit the globally installed copy at `$HOME/.agents/skills/dockerize` directly.
+5. After reviewing semantic equivalence, run `scripts/record-sync.sh` or `scripts/record-sync.ps1`.
+6. Run `scripts/check-sync.sh` or `scripts/check-sync.ps1`, `quick_validate.py` for both `SKILL.md` files, and the full regression suite.
+7. If the change affects skill scope or the default prompt, review the English-only `skills/dockerize/agents/openai.yaml` separately.
+
+Changes limited to references, assets, `agents/openai.yaml`, installation tools, or repository documentation do not require Korean-English skill synchronization. The synchronization manifest proves only that neither skill file has changed since the last semantic review; it does not prove translation quality.

@@ -1,75 +1,116 @@
-# Dockerize 스킬 개발
+# Dockerize Skill
 
-이 저장소는 개인용 `dockerize` 스킬의 의미가 동등한 한국어본과 영어본을 관리한다. 사용자가 미리 수정한 파일이 있으면 작업 시작 시 Git 상태와 mtime으로 해당 작업의 정본을 판정하며, Codex가 실제로 읽고 전역 설치하는 파일은 영어본이다.
+[Korean](README-ko.md)
 
-- 한국어 스킬: `locales/ko/dockerize/SKILL.md`
-- 영어 배포본: `skills/dockerize/SKILL.md`
-- 동기화 상태: `sync/dockerize.sha256`
-- 저장소 작업 규칙: `AGENTS.md`
+Dockerize Skill is a Codex skill for building Docker Compose environments without polluting the
+host with global packages, virtual environments, `node_modules`, generated files, service ports,
+databases, queues, caches, ML models, or GPU tooling.
 
-Codex의 사용자 스킬 설치 위치는 `$HOME/.agents/skills`이다. 자세한 내용은 공식 [Build skills 문서](https://learn.chatgpt.com/docs/build-skills)를 참고한다.
+It inspects the project before generating files, adapts the result to finite jobs or long-lived
+services, and keeps the generated workflow reproducible through Compose. The repository contains
+equivalent Korean and English skill instructions, reusable templates, references, safe global
+installation tools, and regression tests.
 
-## 요구사항
+## Installation
 
-- Linux/macOS에서는 Bash 3.2 이상과 `sha256sum` 또는 `shasum`이 필요하다.
-- Windows에서는 Windows PowerShell 5.1 이상이 필요하다.
-- 관리자 권한이나 서드파티 패키지는 필요하지 않는다.
-- 현재 Linux 개발 환경에서는 PowerShell 스크립트를 실행하지 않고 정적으로 검토한다.
+Linux and macOS require Bash 3.2 or later plus `sha256sum` or `shasum`. Windows requires Windows
+PowerShell 5.1 or later. Administrator privileges and third-party packages are not required.
 
-## 스킬 수정 흐름
-
-이 저장소에서는 `AGENTS.md`에 따라 다음 순서로 작업한다.
-
-1. 두 `SKILL.md`를 편집하기 전에 HEAD 대비 staged 또는 unstaged modified 상태와 filesystem mtime을 한 번 확인한다.
-2. modified 후보가 하나면 그 파일을, 둘이면 mtime이 더 최신인 파일을 해당 작업의 정본으로 선택한다.
-3. 후보가 없으면 요청에 자연스러운 언어로 시작한다. exact mtime 동률, 파일 누락 또는 modified 이외의 삭제·rename·unmerged 등 안전하지 않은 Git 상태에서는 사용자에게 정본 또는 복구 방법을 묻는다.
-4. 선택한 정본의 규칙과 조건을 보존해 다른 언어의 `SKILL.md`를 의미가 동등한 명령문으로 맞춘다. 작업 중 바뀐 mtime으로 정본을 다시 판정하지 않는다.
-5. 두 파일의 의미 동등성을 검토하고 동기화 해시를 기록·검사한 뒤, 양쪽 스킬과 전체 회귀 테스트를 실행한다.
-
-`$HOME/.agents/skills/dockerize`의 설치본은 직접 수정하지 않는다. References, assets 및 `agents/openai.yaml`은 영어 단일본으로 관리한다.
-
-## 동기화 기록과 검사
-
-번역의 의미 동등성을 검토한 뒤에만 다음 명령을 실행한다.
+On Linux or macOS, clone the repository, install the skill, and confirm that its entry point is
+present:
 
 ```bash
-./scripts/record-sync.sh
-./scripts/check-sync.sh
+git clone https://github.com/GuruJung/dockerize-skill.git
+cd dockerize-skill
+./scripts/install.sh
+test -f "$HOME/.agents/skills/dockerize/SKILL.md"
 ```
 
-PowerShell에서는 다음과 같다.
+On Windows PowerShell:
 
 ```powershell
-.\scripts\record-sync.ps1
-.\scripts\check-sync.ps1
+git clone https://github.com/GuruJung/dockerize-skill.git
+Set-Location dockerize-skill
+.\scripts\install.ps1
+Test-Path (Join-Path $HOME '.agents/skills/dockerize/SKILL.md')
 ```
 
-Record 명령은 두 파일의 SHA-256을 `sync/dockerize.sha256`에 원자적으로 기록한다. 해시는 번역 품질을 판단하지 않으며, 마지막 의미 검토 후 어느 한쪽이 변경되었는지만 검출한다.
+The installer first verifies the Korean-English synchronization state, then copies only the
+English `skills/dockerize` directory to `$HOME/.agents/skills/dockerize`. The Korean counterpart,
+development instructions, and synchronization metadata are not installed. If Codex does not
+recognize the installed skill, start a new session.
 
-동기화 manifest가 없거나 손상되었거나 실제 파일과 일치하지 않으면 검사와 전역 설치가 모두 실패한다.
+Both installers use `$HOME/.agents` by default. For an isolated or custom destination, use
+`--agents-root <path>` with Bash or `-AgentsRoot <path>` with PowerShell.
 
-## 검증과 설치
+## Quick start
+
+Ask Codex to use the skill while describing the project outcome. The `$` character is part of the
+skill name; this is a Codex prompt, not a shell command.
+
+```text
+$dockerize Add a Docker Compose setup for this project while avoiding host pollution.
+```
+
+You can add constraints such as live editing, host-visible outputs, GPU support, shared model
+caches, or a particular service that must be reachable from the host. When a material storage or
+runtime choice cannot be inferred safely, the skill asks before generating the setup.
+
+## What the skill does
+
+The skill follows the project rather than applying one fixed Compose layout:
+
+- It inspects dependency manifests, entry points, commands, outputs, side services, ports, GPU
+  needs, large assets, and Hugging Face usage before writing Docker files.
+- It normally copies source into an image instead of bind-mounting the whole checkout, and creates
+  a `.dockerignore` early.
+- It distinguishes finite commands from processes that keep waiting for work. Lifecycle wrappers
+  are added only for long-lived stacks; finite workloads use `docker compose run --rm`.
+- It uses named volumes for persistent outputs and data, adds an export wrapper when users need
+  host access, and supports isolated worktrees without duplicating selected heavy caches.
+- It validates through Compose rather than installing project dependencies on the host.
+
+The generated environment keeps these safety boundaries:
+
+- Secrets and local-only configuration are never copied into images. Runtime environment or
+  targeted read-only mounts are used instead.
+- Databases, queues, object stores, and caches stay on the internal Compose network unless direct
+  host access is required.
+- Host ports are not published merely because a service exists.
+- Non-root containers are used when the selected base image or project supports them cleanly; they
+  are not forced when that would make the setup fragile.
+- Hugging Face projects use a stable shared external `HF_HOME` volume by default, with explicit
+  handling for `HF_TOKEN`, host-cache reuse, ownership, and worktree naming.
+- GPU support is added when training, finetuning, inference, CUDA, or a compatible ML stack makes
+  it necessary.
+
+The detailed behavior contract is in `skills/dockerize/SKILL.md`; topic-specific guidance is in
+`skills/dockerize/references/`.
+
+## Updating, uninstalling, and restoring
+
+### Update
+
+Pull the desired repository revision and run the installer again. An identical installation exits
+without creating a backup.
 
 ```bash
-python "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" locales/ko/dockerize
-python "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" skills/dockerize
-./scripts/check-sync.sh
+git pull --ff-only
 ./scripts/install.sh
 ```
 
-PowerShell에서는 다음 명령으로 설치한다.
-
 ```powershell
+git pull --ff-only
 .\scripts\install.ps1
 ```
 
-설치기는 동기화를 먼저 검사한 뒤 영어 `skills/dockerize` 폴더만 `$HOME/.agents/skills/dockerize`에 복사한다. 한국어 스킬 파일, 동기화 파일 및 개발 지침은 설치본에 포함되지 않는다.
+When installed contents differ, the installer stages and verifies the replacement, backs up the
+current installation, and then promotes the new copy. It keeps the five most recent managed
+backups under `$HOME/.agents/skill-backups/dockerize` and restores the previous installation if
+promotion fails. Files and symbolic links at the managed destination are refused rather than
+overwritten.
 
-두 설치기는 기본적으로 `$HOME/.agents`를 사용한다. 격리 테스트나 사용자 지정 위치에는 Bash의 `--agents-root <path>` 또는 PowerShell의 `-AgentsRoot <path>`를 사용한다.
-
-설치본이 영어 배포본과 같으면 아무 작업도 하지 않는다. 내용이 다르면 새 복사본을 staging하고 검증한 뒤 기존 설치본을 백업하고 교체한다. 최근 관리 백업 5개를 `$HOME/.agents/skill-backups/dockerize`에 유지하며, 대상 위치의 파일이나 링크는 덮어쓰지 않는다.
-
-## 제거
+### Uninstall
 
 ```bash
 ./scripts/uninstall.sh
@@ -79,32 +120,125 @@ PowerShell에서는 다음 명령으로 설치한다.
 .\scripts\uninstall.ps1
 ```
 
-제거 명령은 현재 설치본을 백업 폴더로 옮긴다. 이미 설치되어 있지 않으면 변경 없이 성공한다.
+Uninstalling moves the current installation into the backup directory. It succeeds without
+changes when the skill is not installed.
 
-## 백업 수동 복원
+### Restore a backup manually
 
-먼저 `$HOME/.agents/skills/dockerize`가 없는지 확인한 뒤 백업 하나를 선택한다. Bash에서는 다음과 같이 복원한다.
+First verify that `$HOME/.agents/skills/dockerize` does not exist, then select one `<backup-name>`.
+On Linux or macOS:
 
 ```bash
 mkdir -p "$HOME/.agents/skills"
 cp -R "$HOME/.agents/skill-backups/dockerize/<backup-name>" "$HOME/.agents/skills/dockerize"
 ```
 
-PowerShell에서는 다음과 같다.
+On Windows PowerShell:
 
 ```powershell
 New-Item -ItemType Directory -Path (Join-Path $HOME '.agents/skills') -Force
 Copy-Item -Recurse -LiteralPath (Join-Path $HOME '.agents/skill-backups/dockerize/<backup-name>') -Destination (Join-Path $HOME '.agents/skills/dockerize')
 ```
 
-복원한 폴더를 검증한다. Codex는 보통 스킬 변경을 자동 감지하지만 나타나지 않으면 Codex를 재시작한다.
+Validate the restored directory and start a new Codex session if the skill is not recognized.
 
-## 테스트
+## Maintainer guide
 
-Bash 테스트는 임시 디렉터리만 사용하며 실제 홈 디렉터리를 변경하지 않는다.
+### Repository layout
+
+- Korean skill: `locales/ko/dockerize/SKILL.md`
+- English installed skill: `skills/dockerize/SKILL.md`
+- Translation state: `sync/dockerize.sha256`
+- Templates and references: `skills/dockerize/assets/` and `skills/dockerize/references/`
+- Repository rules: `AGENTS.md`
+
+For the general skill format, see the official
+[Build skills documentation](https://learn.chatgpt.com/docs/build-skills).
+
+### Keep README translations synchronized
+
+`README.md` and `README-ko.md` must retain the same meaning and strength, structure, commands,
+paths, identifiers, and constraints. Neither language is a fixed editing source.
+
+For an existing tracked pair, modify the intended source first. Before translating the
+counterpart, snapshot both Git states and filesystem mtimes once. On Linux:
 
 ```bash
-bash -n scripts/*.sh tests/test-install.sh
-./scripts/check-sync.sh
-bash tests/test-install.sh
+git status --short -- README.md README-ko.md
+stat -c '%y %n' -- README.md README-ko.md
 ```
+
+On macOS, use BSD `stat`:
+
+```bash
+git status --short -- README.md README-ko.md
+stat -f '%.9Fm %N' -- README.md README-ko.md
+```
+
+On Windows PowerShell:
+
+```powershell
+git status --short -- README.md README-ko.md
+Get-Item README.md, README-ko.md | Select-Object FullName, @{Name='LastWriteTimeUtcTicks'; Expression={$_.LastWriteTimeUtc.Ticks}}
+```
+
+A normal source candidate has exactly ` M`, `M `, or `MM` status. If only one file is a candidate,
+use it as the source. If both are candidates, use the file with the newer snapshotted mtime. A
+clean pair is not a synchronization target. Stop for the user's explicit choice if the mtimes are
+equal or either file has an `A`, `D`, `R`, `U`, untracked, or other non-`M` change.
+
+Keep that selection fixed until synchronization finishes, translate the complete counterpart,
+compare both documents, and run `tests/test-readme-sync.sh`. The test checks structural and key
+contract equivalence but does not replace semantic review.
+
+### Edit and synchronize skill translations
+
+Before editing either tracked `SKILL.md`, inspect both files' Git status and filesystem mtime once.
+Only existing files modified relative to `HEAD` are candidates. Select the sole candidate or the
+newer of two candidates. If both files are clean, begin in the natural language of the request.
+Stop for a missing file, equal candidate mtimes, deletion, rename, unmerged state, or any other
+unsafe status.
+
+Keep the selected source fixed through the task. Translate the other `SKILL.md` with the same
+rules, conditions, precedence, and list order while preserving commands, paths, environment
+variables, and code keywords. Do not edit `$HOME/.agents/skills/dockerize` directly.
+
+After semantic comparison, record and verify the synchronization state before running the full
+suite:
+
+```bash
+./scripts/record-sync.sh
+./scripts/check-sync.sh
+python "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" locales/ko/dockerize
+python "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" skills/dockerize
+bash -n scripts/*.sh tests/*.sh
+bash tests/test-readme-sync.sh
+bash tests/test-install.sh
+bash tests/test-huggingface-policy.sh
+```
+
+On Windows PowerShell, record and check the synchronization state with:
+
+```powershell
+.\scripts\record-sync.ps1
+.\scripts\check-sync.ps1
+```
+
+The manifest proves that neither skill file changed after the last semantic review; it does not
+prove translation quality. A missing, damaged, or stale manifest blocks checks and installation.
+Changes limited to references, assets, `agents/openai.yaml`, installation tools, or repository
+documentation do not require skill translation synchronization. Review
+`skills/dockerize/agents/openai.yaml` separately when scope or the default prompt changes.
+
+PowerShell scripts are reviewed statically in the current Linux development environment.
+
+### Improve the skill safely
+
+Do not edit a globally installed copy when a problem is discovered in another project. Preserve
+the consumer project's work, report the skill name and repository commit together with the
+invocation, expected and actual behavior, minimal reproduction, relevant output and diff, and
+whether work is blocked. Make and validate the fix in this repository, use a feature worktree for
+candidate changes, integrate the verified result into `main`, and only then update the installed
+copy with the installer.
+
+This project is licensed under the [MIT License](LICENSE).
