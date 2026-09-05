@@ -8,10 +8,17 @@ source code와 tests는 실제 동작의 source of truth이다.
 
 ## 공개 배포 준비
 
-- 이 저장소는 현재 private으로 유지하되 향후 public 독자가 설치하고 이해할 수 있는
-  사용자 문서, 작업 지침과 재사용 라이선스를 제공한다.
-- canonical GitHub 위치는 `GuruJung/dockerize-skill`이다. public 전환은 별도 결정이며
+- 이 저장소는 public 독자가 설치하고 이해할 수 있는 사용자 문서, 작업 지침과
+  재사용 라이선스를 제공한다.
+- canonical GitHub 위치는 public `GuruJung/dockerize-skill`이며 기본 브랜치는 `main`이다.
   현재 feature branch와 worktree는 배포 대상이 아니다.
+- 개인 이메일이 포함된 기존 GitHub 저장소는 private archive인
+  `GuruJung/dockerize-skill-private-archive`로 보관한다. 새 저장소는 이력과 비밀정보 검사를
+  통과한 `main`만 게시한 후 public으로 전환한다.
+- 소유자의 Git 작성자·커미터 이메일은 `41893530+GuruJung@users.noreply.github.com`을
+  사용한다. 공개 이력에는 개인 이메일과 실제 개인 환경 경로를 포함하지 않는다.
+- 이력 정리 전 백업과 이전·이후 커밋 대응표는 로컬 Git 메타데이터에만 보관한다.
+  기존 이력을 새 저장소에 다시 push하거나 merge하지 않는다.
 - 소프트웨어와 문서는 `Copyright (c) 2026 GuruJung`의 MIT License로 제공한다.
 - 사용하지 않는 `docs/superpowers/` 계획 문서는 현재 tree에 유지하지 않고 Git 이력으로만
   보존한다.

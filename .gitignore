@@ -1,0 +1,16 @@
+# Local worktrees and development state
+/.worktrees/
+/initial_plan.md
+__pycache__/
+*.py[cod]
+
+# Local credentials and private configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks

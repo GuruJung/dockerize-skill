@@ -86,7 +86,9 @@ assert_contains "$agents_file" 'Do not edit the globally installed copy at `$HOM
 assert_absent "$korean_readme" '한글 원본'
 
 for path in "$english_readme" "$agents_file"; do
-  assert_absent "$path" '/home/example'
+  if grep -Eq '(/home/|/Users/)[[:alnum:]_.-]+' "$path"; then
+    fail "unexpected user-specific home path in $path"
+  fi
   assert_absent "$path" 'docs/superpowers'
 done
 
